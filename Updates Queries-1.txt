@@ -1,0 +1,201 @@
+-- Database Creation:
+a) Create Books table with columns BOOK_ID, TITLE, AUTHOR, GENRE,
+YEAR_PUBLISHED, AVAILABLE_COPIES.
+b) Create Members table with columns MEMBER_ID, NAME, EMAIL, PHONE_NO,
+ADDRESS, MEMBERSHIP_DATE.
+c) Create BorrowingRecords table with columns BORROW_ID, MEMBER_ID,
+BOOK_ID, BORROW_DATE, RETURN_DATE. Set foreign key constraints linking
+MEMBER_ID to Members and BOOK_ID to Books.
+
+-- Create Books table
+
+CREATE TABLE Books (
+
+    BOOK_ID SERIAL PRIMARY KEY,
+
+    TITLE VARCHAR(100) NOT NULL,
+
+    AUTHOR VARCHAR(100) NOT NULL,
+
+    GENRE VARCHAR(50),
+
+    YEAR_PUBLISHED INTEGER,
+
+    AVAILABLE_COPIES INTEGER DEFAULT 0
+
+);
+
+ 
+
+-- Create Members table
+
+CREATE TABLE Members (
+
+    MEMBER_ID SERIAL PRIMARY KEY,
+
+    NAME VARCHAR(100) NOT NULL,
+
+    EMAIL VARCHAR(100) UNIQUE NOT NULL,
+
+    PHONE_NO VARCHAR(15),
+
+    ADDRESS TEXT,
+
+    MEMBERSHIP_DATE DATE DEFAULT (CURRENT_DATE)
+
+);
+
+ 
+
+-- Create BorrowingRecords table
+
+CREATE TABLE BorrowingRecords (
+
+    BORROW_ID SERIAL PRIMARY KEY,
+
+    MEMBER_ID INTEGER REFERENCES Members(MEMBER_ID),
+
+    BOOK_ID INTEGER REFERENCES Books(BOOK_ID),
+
+    BORROW_DATE DATE DEFAULT (CURRENT_DATE),
+
+    RETURN_DATE DATE,
+
+    CONSTRAINT valid_dates CHECK (RETURN_DATE >= BORROW_DATE)
+
+);
+
+-- Data Creation:
+Insert sample data into all three tables.
+
+-- Insert sample books
+
+INSERT INTO Books (TITLE, AUTHOR, GENRE, YEAR_PUBLISHED, AVAILABLE_COPIES) VALUES
+('The Great Gatsby', 'F. Scott Fitzgerald', 'Fiction', 1925, 3),
+('To Kill a Mockingbird', 'Harper Lee', 'Fiction', 1960, 2),
+('1984', 'George Orwell', 'Science Fiction', 1949, 4),
+('Pride and Prejudice', 'Jane Austen', 'Romance', 1813, 3),
+('The Hobbit', 'J.R.R. Tolkien', 'Fantasy', 1937, 5),
+('Harry Potter', 'J.K. Rowling', 'Fantasy', 1997, 3),
+('The Da Vinci Code', 'Dan Brown', 'Mystery', 2003, 2),
+('The Catcher in the Rye', 'J.D. Salinger', 'Fiction', 1951, 1);
+
+-- Insert sample members
+INSERT INTO Members (NAME, EMAIL, PHONE_NO, ADDRESS) VALUES
+('John Smith', 'john.smith@email.com', '1234567890', '123 Main St'),
+('Emma Wilson', 'emma.w@email.com', '2345678901', '456 Oak Ave'),
+('Michael Brown', 'michael.b@email.com', '3456789012', '789 Pine Rd'),
+('Sarah Johnson', 'sarah.j@email.com', '4567890123', '321 Elm St'),
+('David Lee', 'david.lee@email.com', '5678901234', '654 Maple Dr');
+
+-- Insert sample borrowing records
+INSERT INTO BorrowingRecords (MEMBER_ID, BOOK_ID, BORROW_DATE, RETURN_DATE) VALUES
+(1, 1, '2024-03-01', '2024-03-31'),
+(2, 3, '2024-03-15', NULL),
+(3, 2, '2024-02-15', '2024-03-15'),
+(4, 5, '2024-03-20', NULL),
+(1, 4, '2024-01-01', '2024-02-01'),
+(2, 6, '2024-03-01', NULL),
+(3, 7, '2024-02-01', '2024-03-01'),
+(4, 8, '2024-03-10', NULL);
+
+
+
+--Queries
+
+-- a) Retrieve a list of books currently borrowed by a specific member.
+
+SELECT br.MEMBER_ID, b.BOOK_ID, b.TITLE
+FROM Books b
+JOIN BorrowingRecords br ON b.BOOK_ID = br.BOOK_ID
+WHERE br.MEMBER_ID = 2 AND br.RETURN_DATE IS NULL;
+
+
+-- b) Find members who have overdue books (borrowed more than 30 days ago, not
+returned).
+
+SELECT m.MEMBER_ID, m.NAME, b.BOOK_ID, b.TITLE, br.BORROW_DATE
+FROM Members m
+JOIN BorrowingRecords br ON m.MEMBER_ID = br.MEMBER_ID
+JOIN Books b ON br.BOOK_ID = b.BOOK_ID
+WHERE br.RETURN_DATE IS NULL
+AND DATEDIFF(CURRENT_DATE, br.BORROW_DATE) > 30;
+
+
+-- c) Retrieve books by genre along with the count of available copies
+
+SELECT GENRE, BOOK_ID, TITLE, AVAILABLE_COPIES
+FROM Books
+ORDER BY GENRE;
+
+SELECT DATE_FORMAT(BORROW_DATE, '%Y-%m') AS YR_MONTH, COUNT(*) as TOTAL_BOOKS_BORROWED
+FROM BorrowingRecords
+GROUP BY DATE_FORMAT(BORROW_DATE, '%Y-%m')
+ORDER BY YR_MONTH;
+
+-- d) Find the most borrowed book(s) overall.
+
+WITH book_borrowed_count as
+(
+SELECT BOOK_ID, COUNT(*) as TIMES_BORROWED
+FROM BorrowingRecords
+GROUP BY BOOK_ID
+)
+SELECT bbc.BOOK_ID, b.TITLE, bbc.TIMES_BORROWED
+FROM book_borrowed_count bbc
+JOIN Books b ON b.BOOK_ID = bbc.BOOK_ID
+WHERE bbc.TIMES_BORROWED = (SELECT MAX(TIMES_BORROWED) FROM book_borrowed_count);
+
+
+-- e) Retrieve members who have borrowed books from at least three different genres
+
+SELECT m.MEMBER_ID, m.NAME, COUNT(DISTINCT b.GENRE) as DIFFERENT_GENRES
+FROM Members m
+JOIN BorrowingRecords br ON m.MEMBER_ID = br.MEMBER_ID
+JOIN Books b ON br.BOOK_ID = b.BOOK_ID
+GROUP BY m.MEMBER_ID
+HAVING COUNT(DISTINCT b.GENRE) >= 3;
+
+
+-- Reporting and Analytics:
+
+-- a) Calculate the total number of books borrowed per month.
+
+SELECT DATE_FORMAT(BORROW_DATE, '%Y-%m') AS YR_MONTH, COUNT(*) as TOTAL_BOOKS_BORROWED
+FROM BorrowingRecords
+GROUP BY DATE_FORMAT(BORROW_DATE, '%Y-%m')
+ORDER BY YR_MONTH;
+
+
+-- b) Find the top three most active members based on the number of books
+borrowed.
+
+
+WITH book_borrowed_count as
+(
+SELECT MEMBER_ID, COUNT(*) as TIMES_BORROWED
+FROM BorrowingRecords
+GROUP BY MEMBER_ID
+),
+get_rank as
+(
+SELECT *, rank() OVER (order by TIMES_BORROWED DESC) as rnk
+from book_borrowed_count
+)
+SELECT * from get_rank where rnk <= 3;
+
+
+-- c) Retrieve authors whose books have been borrowed at least 10 times.
+
+SELECT b.AUTHOR, COUNT(*) as TOTAL_BORROWS
+FROM Books b
+JOIN BorrowingRecords br ON b.BOOK_ID = br.BOOK_ID
+GROUP BY b.AUTHOR
+HAVING COUNT(*) >= 10;
+
+
+-- d) Identify members who have never borrowed a book.
+SELECT m.MEMBER_ID
+FROM Members m
+LEFT JOIN BorrowingRecords br ON m.MEMBER_ID = br.MEMBER_ID
+WHERE br.MEMBER_ID IS NULL;
