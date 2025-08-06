@@ -1,0 +1,73 @@
+CREATE DATABASE movierental
+    WITH
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'English_United States.1252'
+    LC_CTYPE = 'English_United States.1252'
+    LOCALE_PROVIDER = 'libc'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1
+    IS_TEMPLATE = False;
+
+
+
+CREATE TABLE rental_data ( 
+    MOVIE_ID integer, 
+    CUSTOMER_ID integer, 
+    GENRE varchar(50), 
+    RENTAL_DATE date, 
+    RETURN_DATE date, 
+    RENTAL_FEE numeric(10,2) 
+); 
+
+
+
+INSERT INTO rental_data VALUES 
+(1, 101, 'Action', '2024-01-15', '2024-01-18', 5.99), 
+(2, 102, 'Drama', '2024-01-16', '2024-01-19', 4.99), 
+(3, 103, 'Comedy', '2024-01-17', '2024-01-20', 4.99), 
+(4, 104, 'Action', '2024-02-01', '2024-02-04', 5.99), 
+(5, 105, 'Drama', '2024-02-02', '2024-02-05', 4.99), 
+(6, 101, 'Action', '2024-02-10', '2024-02-13', 5.99), 
+(7, 102, 'Comedy', '2024-02-15', '2024-02-18', 4.99), 
+(8, 103, 'Drama', '2024-03-01', '2024-03-04', 4.99), 
+(9, 104, 'Action', '2024-03-05', '2024-03-08', 5.99), 
+(10, 105, 'Comedy', '2024-03-10', '2024-03-13', 4.99);
+
+
+
+SELECT  
+    GENRE, 
+    MOVIE_ID, 
+    COUNT(*) as rental_count, 
+    SUM(RENTAL_FEE) as total_fee 
+FROM rental_data 
+GROUP BY GENRE, MOVIE_ID 
+ORDER BY GENRE, MOVIE_ID; 
+
+
+
+SELECT GENRE, SUM(RENTAL_FEE) AS total_fee
+FROM rental_data
+GROUP BY ROLLUP(GENRE)
+ORDER BY GENRE;
+
+
+
+SELECT GENRE, RENTAL_DATE, CUSTOMER_ID, SUM(RENTAL_FEE) AS total_fee
+FROM rental_data
+GROUP BY CUBE(GENRE, RENTAL_DATE, CUSTOMER_ID)
+ORDER BY GENRE, RENTAL_DATE, CUSTOMER_ID;
+
+
+
+SELECT *
+FROM rental_data
+WHERE GENRE = 'Action';
+
+
+
+SELECT *
+FROM rental_data
+WHERE GENRE IN ('Action', 'Drama')
+AND RENTAL_DATE >= (CURRENT_DATE - INTERVAL '3 months');
