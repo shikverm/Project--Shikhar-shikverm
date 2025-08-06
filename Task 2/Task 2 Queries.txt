@@ -1,0 +1,103 @@
+CREATE DATABASE payroll_database
+WITH
+OWNER = postgres
+ENCODING = 'UTF8'
+LOCALE_PROVIDER = 'libc'
+CONNECTION LIMIT = -1
+IS_TEMPLATE = False;
+
+
+
+CREATE TABLE employees ( 
+    EMPLOYEE_ID INTEGER PRIMARY KEY, 
+    NAME TEXT NOT NULL, 
+    DEPARTMENT TEXT NOT NULL, 
+    EMAIL TEXT UNIQUE, 
+    PHONE_NO NUMERIC(10,0), 
+    JOINING_DATE DATE, 
+    SALARY NUMERIC(10,2), 
+    BONUS NUMERIC(10,2), 
+    TAX_PERCENTAGE NUMERIC(5,2) 
+); 
+
+
+
+INSERT INTO employees VALUES 
+(1, 'John Doe', 'Sales', 'john.doe@company.com', 1234567890, '2023-08-15', 75000, 5000, 20), 
+(2, 'Jane Smith', 'IT', 'jane.smith@company.com', 2345678901, '2023-12-01', 85000, 7000, 22), 
+(3, 'Mike Johnson', 'Sales', 'mike.j@company.com', 3456789012, '2023-06-20', 65000, 4000, 18), 
+(4, 'Sarah Williams', 'HR', 'sarah.w@company.com', 4567890123, '2024-01-15', 70000, 4500, 20), 
+(5, 'Robert Brown', 'IT', 'robert.b@company.com', 5678901234, '2023-09-10', 95000, 8000, 25), 
+(6, 'Lisa Anderson', 'Sales', 'lisa.a@company.com', 6789012345, '2023-11-05', 72000, 5500, 20), 
+(7, 'David Wilson', 'HR', 'david.w@company.com', 7890123456, '2023-07-25', 68000, 4000, 18), 
+(8, 'Emily Davis', 'IT', 'emily.d@company.com', 8901234567, '2024-02-01', 88000, 7500, 23), 
+(9, 'James Taylor', 'Sales', 'james.t@company.com', 9012345678, '2023-10-12', 78000, 6000, 21), 
+(10, 'Amy Martinez', 'HR', 'amy.m@company.com', 1122334455, '2023-12-20', 71000, 4500, 20);
+
+
+
+SELECT NAME, SALARY  
+FROM employees  
+ORDER BY SALARY DESC;
+
+
+
+SELECT NAME, (SALARY + BONUS) as TOTAL_COMPENSATION  
+FROM employees  
+WHERE (SALARY + BONUS) > 100000; 
+
+
+
+UPDATE employees  
+SET BONUS = BONUS * 1.1  
+WHERE DEPARTMENT = 'Sales';
+
+
+
+SELECT  
+    NAME, 
+    SALARY, 
+    BONUS, 
+    TAX_PERCENTAGE, 
+    CAST((SALARY + BONUS) * (1 - TAX_PERCENTAGE/100) AS NUMERIC(10,2)) as NET_SALARY
+FROM employees;
+
+
+
+SELECT  
+    DEPARTMENT, 
+    CAST(AVG(SALARY) AS NUMERIC(10,2)) as AVG_SALARY, 
+    MIN(SALARY) as MIN_SALARY, 
+    MAX(SALARY) as MAX_SALARY 
+FROM employees 
+GROUP BY DEPARTMENT; 
+
+
+
+SELECT EMPLOYEE_ID, NAME, JOINING_DATE  
+FROM employees  
+WHERE JOINING_DATE >= CURRENT_DATE - INTERVAL '6 months'; 
+
+
+
+SELECT DEPARTMENT, COUNT(*) as EMPLOYEE_COUNT  
+FROM employees  
+GROUP BY DEPARTMENT; 
+
+
+
+WITH avg_sal AS(
+	SELECT  
+	    DEPARTMENT, 
+	    CAST(AVG(SALARY) AS NUMERIC(10,2)) as AVG_SALARY 
+	FROM employees
+	GROUP BY DEPARTMENT
+)
+SELECT * from avg_sal
+WHERE AVG_SALARY = (SELECT MAX(AVG_SALARY) FROM avg_sal);
+
+
+
+SELECT EMPLOYEE_ID, NAME, SALARY
+FROM employees
+WHERE SALARY IN (SELECT SALARY FROM employees GROUP BY SALARY HAVING COUNT(*) > 1)
